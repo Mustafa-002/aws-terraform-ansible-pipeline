@@ -1,21 +1,14 @@
 terraform {
-  required_version = ">= 1.0.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
-}
 
-provider "aws" {
-  region = var.aws_region
-}
-
-terraform {
   backend "s3" {
-    bucket = "your-terraform-state-bucket"
+    bucket = "bucket-for-devops-labs"
     key    = "iac-lab/terraform.tfstate"
-    region = "us-east-1"
+    region = "us-east-1" # Ensure this matches the region where the bucket was created
   }
 }
