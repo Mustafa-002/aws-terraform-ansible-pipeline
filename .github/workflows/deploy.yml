@@ -37,14 +37,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      # 5. Initialize & Apply Terraform (Runs in repository root)
+     # 5. Initialize & Apply Terraform
       - name: Terraform Init & Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          terraform init
+          terraform init -upgrade
           terraform apply -auto-approve
           echo "TARGET_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
 
