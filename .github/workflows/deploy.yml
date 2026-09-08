@@ -1,0 +1,68 @@
+name: "IaC Provisioning & Configuration Pipeline"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: "Deploy Infrastructure & Configure Nginx"
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Repository Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Setup SSH Key for Ansible
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
+          chmod 600 ~/.ssh/id_rsa
+          chmod 644 ~/.ssh/id_rsa.pub
+
+      # 3. Setup Terraform CLI
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      # 4. Setup Ansible
+      - name: Setup Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      # 5. Initialize & Apply Terraform (Runs in repository root)
+      - name: Terraform Init & Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+          echo "TARGET_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+
+      # 6. Disable Host Key Checking for Automated Ansible Run
+      - name: Configure Ansible SSH Settings
+        run: |
+          export ANSIBLE_HOST_KEY_CHECKING=False
+
+      # 7. Run Ansible Playbook
+      - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          # Wait 30 seconds for the EC2 SSH service to fully initialize
+          sleep 30
+          ansible-playbook -i "${{ env.TARGET_IP }}," playbook.yml -u ubuntu --private-key ~/.ssh/id_rsa
+
+      # 8. Verify Deployment (Smoke Test)
+      - name: Verify Web Server Deployment
+        run: |
+          curl -I http://${{ env.TARGET_IP }}
