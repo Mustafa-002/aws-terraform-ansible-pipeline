@@ -11,3 +11,11 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
+terraform {
+  backend "s3" {
+    bucket = "your-terraform-state-bucket"
+    key    = "iac-lab/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
